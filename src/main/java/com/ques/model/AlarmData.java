@@ -1,2 +1,11 @@
-package com.ques.model;public class AlarmData {
+package com.ques.model;
+
+import lombok.Data;
+
+@Data
+public class AlarmData {
+    String tagName;
+    String rule;
+    long dataTime;
+    Double value;
 }
