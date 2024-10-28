@@ -8,6 +8,8 @@ import com.ques.sink.KafkaSink;
 import com.ques.sink.MongoDBSink;
 import com.ques.source.KafkaSource;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -16,7 +18,7 @@ import org.apache.flink.util.OutputTag;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlinkDemo {
+public class FlinkDemoWebui {
 
     /**
      * 报警快照旁路输出标签
@@ -24,8 +26,10 @@ public class FlinkDemo {
     private static  OutputTag<AlarmData> alarmDataOutputTag = new OutputTag<AlarmData>("alarmData"){};
 
     public static void main(String[] args) throws Exception {
-        // 获取当前执行环境, 根据当前程序的部署方式不同，来获取运行环境
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        // 创建webui运行环境
+        Configuration config = new Configuration();
+        config.setInteger(RestOptions.PORT,8081);
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(config);
 
         // 设置全局环境
         Map<String, String> configs = new HashMap<>();
@@ -42,15 +46,12 @@ public class FlinkDemo {
                 .name("kafka数据源");  // 设置算子名称
 
         // 计算规则算子
-        SingleOutputStreamOperator<CalcResult> process = dataStream
-                .keyBy(TagData::getTagName)
-                .process(new RuleCalc())
+        SingleOutputStreamOperator<CalcResult> process = dataStream.process(new RuleCalc())
                 .setParallelism(4)     // 设置算子并行度
                 .name("规则计算算子");
 
         // 将计算结果输出到kafka
-        process.keyBy(CalcResult::getTagName)
-                .addSink(new KafkaSink())
+        process.addSink(new KafkaSink())
                 .setParallelism(2)
                 .name("输出结果到kafka");
 
